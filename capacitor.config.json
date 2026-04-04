@@ -2,9 +2,7 @@
   "appId": "com.smashpad.app",
   "appName": "SmashPad",
   "webDir": "www",
-  "server": {
-    "allowNavigation": ["*"]
-  },
+  "server": { "allowNavigation": ["*"] },
   "ios": {
     "contentInset": "always",
     "backgroundColor": "#06060e",

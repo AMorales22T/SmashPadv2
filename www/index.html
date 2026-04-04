@@ -2,10 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,111 +10,128 @@
   <title>SmashPad</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap"
-    rel="stylesheet"
-  >
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
   <link rel="stylesheet" href="./main.css">
 </head>
 <body>
+
+  <!-- ═══ SETUP SCREEN ═══ -->
   <div id="setup">
     <canvas id="bgCanvas"></canvas>
     <div class="scan-lines"></div>
-
     <div class="setup-content">
       <div class="logo-wrap">
         <div class="logo-eyebrow">[ QR READY ]</div>
         <div class="logo">SMASH<span>PAD</span></div>
         <div class="logo-sub">ESCANEA, ELIGE JUGADOR Y EMPIEZA</div>
       </div>
-
-      <div class="connection-pill" id="connectionHint">
-        Servidor detectado: <span id="serverAddress">--</span>
+      <div class="connection-pill">
+        Servidor: <span id="serverAddress">--</span>
       </div>
-
-      <div class="native-pair-card" id="nativePairCard">
-        <div class="section-label">// EMPAREJAR APP IOS</div>
-        <div class="native-pair-copy">
-          Si la app no conoce la IP del PC, guardala aqui una vez y ya podras elegir jugador normalmente.
-        </div>
-        <div class="native-pair-row">
-          <input id="nativeServerHost" type="text" placeholder="192.168.1.42 o ws://192.168.1.42:8000">
-          <button id="nativeSaveBtn" type="button">Guardar</button>
-        </div>
-      </div>
-
       <div class="section-label">// TOCA TU JUGADOR</div>
       <div class="player-cards" role="radiogroup" aria-label="Seleccion de jugador">
         <button class="player-card selected" data-player="1" type="button">
-          <div class="card-glow"></div>
-          <div class="card-num">P1</div>
-          <div class="card-text">Rojo</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P1</div>
+          <div class="card-text">Rojo</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="2" type="button">
-          <div class="card-glow"></div>
-          <div class="card-num">P2</div>
-          <div class="card-text">Azul</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P2</div>
+          <div class="card-text">Azul</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="3" type="button">
-          <div class="card-glow"></div>
-          <div class="card-num">P3</div>
-          <div class="card-text">Amarillo</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P3</div>
+          <div class="card-text">Amarillo</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="4" type="button">
-          <div class="card-glow"></div>
-          <div class="card-num">P4</div>
-          <div class="card-text">Verde</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P4</div>
+          <div class="card-text">Verde</div><div class="card-bar"></div>
         </button>
       </div>
-
-      <p class="setup-copy" id="setupCopy">
-        Al tocar una tarjeta te conectas automaticamente. No hace falta escribir IP.
-      </p>
-
+      <p class="setup-copy" id="setupCopy">Al tocar una tarjeta te conectas automaticamente.</p>
       <div class="setup-actions">
-        <a class="qr-hint" href="./pair.html" target="_blank" rel="noopener noreferrer">
-          Abrir pantalla QR
-        </a>
+        <a class="qr-hint" href="./pair.html" target="_blank" rel="noopener noreferrer">Abrir pantalla QR</a>
       </div>
     </div>
   </div>
 
+  <!-- ═══ QR SCANNER MODAL ═══ -->
+  <div id="qrScanner">
+    <video id="qrVideo" autoplay playsinline muted></video>
+    <canvas id="qrCanvas"></canvas>
+    <div class="qr-ui">
+      <div class="qr-frame"></div>
+      <p class="qr-label">Apunta al QR del servidor</p>
+      <button id="qrCancelBtn" type="button">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- ═══ CONTROLLER ═══ -->
   <div id="controller">
-    <div id="statusBar">
-      <span id="statusText">Desconectado</span>
-      <div class="status-actions">
-        <button class="mini-btn" id="gyroBtn" type="button">Gyro OFF</button>
-        <button class="mini-btn" id="gyroCenterBtn" type="button">Centrar gyro</button>
-        <button class="mini-btn" id="fullscreenBtn" type="button">Pantalla completa</button>
-        <button class="mini-btn" id="resetBtn" type="button">Cambiar jugador</button>
-      </div>
+
+    <!-- Minimal HUD -->
+    <div id="hud">
+      <div id="playerBadge">P1</div>
+      <div id="statusDot"></div>
+      <div style="flex:1"></div>
+      <button id="settingsBtn" type="button" aria-label="Ajustes">⚙</button>
     </div>
 
+    <!-- Shoulder row -->
     <div class="shoulder-row">
       <button class="trigger" data-btn="L" data-side="left" type="button">L</button>
       <button class="z-btn" data-btn="Z" type="button">Z</button>
       <button class="trigger" data-btn="R" data-side="right" type="button">R</button>
     </div>
 
-    <div class="controls-grid">
+    <!-- Main controls -->
+    <div class="controls-main">
+
+      <!-- LEFT: stick or dpad -->
       <div class="left-zone">
-        <div class="zone-label">MOVIMIENTO</div>
-        <div class="stick-area" id="joystick">
-          <div class="stick-knob" id="stickHandle">
-            <div class="stick-knob__cap"></div>
+        <div id="joystickZone">
+          <div class="stick-area" id="joystick">
+            <div class="stick-knob" id="stickHandle">
+              <div class="stick-knob__cap"></div>
+            </div>
           </div>
         </div>
-        <div class="gyro-copy" id="gyroCopy">Puedes usar el stick o activar el gyro.</div>
+        <div id="dpadZone">
+          <div class="dpad">
+            <div class="dpad-row">
+              <div class="dpad-empty"></div>
+              <button class="dpad-btn" data-btn="UP" type="button">
+                <svg viewBox="0 0 24 24"><path d="M12 4l8 10H4z" fill="currentColor"/></svg>
+              </button>
+              <div class="dpad-empty"></div>
+            </div>
+            <div class="dpad-row">
+              <button class="dpad-btn" data-btn="LEFT" type="button">
+                <svg viewBox="0 0 24 24"><path d="M4 12l10-8v16z" fill="currentColor"/></svg>
+              </button>
+              <div class="dpad-center"></div>
+              <button class="dpad-btn" data-btn="RIGHT" type="button">
+                <svg viewBox="0 0 24 24"><path d="M20 12L10 4v16z" fill="currentColor"/></svg>
+              </button>
+            </div>
+            <div class="dpad-row">
+              <div class="dpad-empty"></div>
+              <button class="dpad-btn" data-btn="DOWN" type="button">
+                <svg viewBox="0 0 24 24"><path d="M12 20L4 10h16z" fill="currentColor"/></svg>
+              </button>
+              <div class="dpad-empty"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <button class="start-btn" data-btn="START" type="button">START</button>
+      <!-- CENTER: START -->
+      <div class="center-zone">
+        <button class="start-btn" data-btn="START" type="button">START</button>
+      </div>
 
+      <!-- RIGHT: face buttons -->
       <div class="right-zone">
-        <div class="zone-label zone-label-right">ATAQUES</div>
         <div class="face-buttons">
           <button class="face-btn" id="a-btn" data-btn="A" type="button">A</button>
           <button class="face-btn" id="b-btn" data-btn="B" type="button">B</button>
@@ -126,69 +140,93 @@
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Settings backdrop -->
+    <div id="settingsBackdrop"></div>
+
+    <!-- Settings panel (slides from right) -->
+    <div id="settingsPanel">
+      <div class="sp-header">
+        <span>⚙ AJUSTES</span>
+        <button id="settingsCloseBtn" type="button">✕</button>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-label">JUGADOR</div>
+        <div class="player-mini-row">
+          <button class="player-mini" data-player="1" type="button">P1</button>
+          <button class="player-mini" data-player="2" type="button">P2</button>
+          <button class="player-mini" data-player="3" type="button">P3</button>
+          <button class="player-mini" data-player="4" type="button">P4</button>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-label">DIRECCIÓN</div>
+        <div class="sp-toggle-row">
+          <button class="sp-toggle" id="useStick" type="button">🕹 Stick</button>
+          <button class="sp-toggle" id="useDpad" type="button">✛ Cruz</button>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-label">LAYOUT</div>
+        <div class="sp-toggle-row">
+          <button class="sp-toggle" id="layoutNormal" type="button">Normal</button>
+          <button class="sp-toggle" id="layoutMirror" type="button">Zurdo</button>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-label">GIROSCOPIO</div>
+        <button class="sp-btn" id="gyroBtn" type="button">Gyro OFF</button>
+        <button class="sp-btn" id="gyroCenterBtn" type="button" disabled>Centrar gyro</button>
+        <p class="sp-copy" id="gyroCopy">Inclina el movil para mover.</p>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-label">PANTALLA</div>
+        <button class="sp-btn" id="fullscreenBtn" type="button">Pantalla completa</button>
+      </div>
+
+      <div class="sp-section">
+        <button class="sp-btn sp-btn-danger" id="resetBtn" type="button">↩ Cambiar jugador</button>
+      </div>
+    </div>
+
+  </div><!-- /#controller -->
 
   <script src="./app.js"></script>
   <script>
-    (function() {
-      const canvas = document.getElementById('bgCanvas');
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      let width = 0;
-      let height = 0;
+    /* Background particle canvas */
+    (function () {
+      const c = document.getElementById('bgCanvas');
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      let W = 0, H = 0;
       const dots = Array.from({ length: 60 }, () => ({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        r: Math.random() * 1.5 + 0.4,
+        x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+        vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4,
+        r: Math.random() * 1.5 + .4,
         hue: [267, 192, 0, 145][Math.floor(Math.random() * 4)],
-        a: Math.random() * 0.35 + 0.08
+        a: Math.random() * .35 + .08
       }));
-
-      function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, width, height);
-        ctx.strokeStyle = 'rgba(255,255,255,0.022)';
-        ctx.lineWidth = 1;
-
-        for (let x = 0; x < width; x += 56) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, height);
-          ctx.stroke();
-        }
-
-        for (let y = 0; y < height; y += 56) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(width, y);
-          ctx.stroke();
-        }
-
-        dots.forEach((dot) => {
-          dot.x += dot.vx;
-          dot.y += dot.vy;
-          if (dot.x < 0 || dot.x > width) dot.vx *= -1;
-          if (dot.y < 0 || dot.y > height) dot.vy *= -1;
-
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${dot.hue},80%,60%,${dot.a})`;
-          ctx.fill();
+      const resize = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+      const draw = () => {
+        ctx.clearRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(255,255,255,.022)'; ctx.lineWidth = 1;
+        for (let x = 0; x < W; x += 56) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+        for (let y = 0; y < H; y += 56) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        dots.forEach(d => {
+          d.x += d.vx; d.y += d.vy;
+          if (d.x < 0 || d.x > W) d.vx *= -1;
+          if (d.y < 0 || d.y > H) d.vy *= -1;
+          ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${d.hue},80%,60%,${d.a})`; ctx.fill();
         });
-
         requestAnimationFrame(draw);
-      }
-
-      resize();
-      window.addEventListener('resize', resize);
-      draw();
+      };
+      resize(); addEventListener('resize', resize); draw();
     })();
   </script>
 </body>

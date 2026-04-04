@@ -1,0 +1,16 @@
+{
+  "name": "smashpad",
+  "version": "1.0.0",
+  "description": "SmashPad - Mando inalámbrico multijugador",
+  "scripts": {
+    "build": "echo 'Static web app, nothing to build'",
+    "sync": "cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "appId": "com.smashpad.app",
+  "appName": "SmashPad",
+  "webDir": "www",
+  "server": {
+    "allowNavigation": ["*"]
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#06060e",
+    "preferredContentMode": "mobile",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

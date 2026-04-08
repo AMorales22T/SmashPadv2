@@ -1,44 +1,68 @@
-// ═══════════════════════════════════════════════════════════════
-//  SmashPad — app.js
-//  Protocolo JSON sobre WebSocket.
-//  En Safari: conecta usando la IP del servidor directamente.
-//  En IPA (Capacitor): muestra pantalla para introducir la IP.
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+//  SmashPad — app.js  v2
+//  Módulos: State | Theme | WebSocket | ButtonPad | Joystick | Gyro |
+//           Haptics | QR Scanner | Settings Panel | UI helpers
+// ═══════════════════════════════════════════════════════════════════════
 
-const PLAYER_COLORS = {
-  1: '#e74c3c',
-  2: '#3498db',
-  3: '#f1c40f',
-  4: '#2ecc71'
+/* ─── Constantes ─────────────────────────────────────────────────────── */
+
+const PLAYER_COLORS = { 1: '#e74c3c', 2: '#3498db', 3: '#f1c40f', 4: '#2ecc71' };
+
+const GYRO_SENSE_MAP = {
+  1: { deadzone: 0.08, scale: 25 },  // muy suave / gran deadzone
+  2: { deadzone: 0.06, scale: 22 },
+  3: { deadzone: 0.04, scale: 18 },  // default
+  4: { deadzone: 0.025, scale: 15 },
+  5: { deadzone: 0.01, scale: 12 },  // muy preciso
 };
+
+const GYRO_SMOOTHING = 0.22; // factor EMA (0 = sin suavizado, 1 = congelado)
+
+/* ─── Estado global ──────────────────────────────────────────────────── */
 
 const state = {
-  socket:               null,
-  selectedPlayer:       1,
-  connectedPlayer:      null,
-  wsUrl:                null,   // se asigna tras detectar el entorno
-  activeButtons:        new Set(),
-  activeDirections:     new Set(),
-  joystickPointerId:    null,
-  gyroEnabled:          false,
+  // WebSocket
+  socket:              null,
+  selectedPlayer:      1,
+  connectedPlayer:     null,
+  wsUrl:               null,
+
+  // Inputs
+  activeButtons:       new Set(),
+  activeDirections:    new Set(),
+  joystickPointerId:   null,
+
+  // Giroscopio
+  gyroEnabled:         false,
   gyroPermissionGranted: false,
-  gyroNeutral:          null,
-  gyroLast:             null
+  gyroNeutral:         null,
+  gyroLast:            null,
+  gyroSmoothed:        { x: 0, y: 0 },
+
+  // Settings
+  vibrationEnabled:    lsGet('smashpad_vibration') !== 'false',
+  gyroSensLevel:       Number(lsGet('smashpad_gyro_sens') || '3'),
+
+  // QR
+  qrStream:            null,
+  qrAnimFrame:         null,
 };
 
-// ─── Entry ───────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   ENTRY
+   ═══════════════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
   bindSetup();
   bindController();
   applyPlayerTheme(1);
+  initSettingsPanel();
 
   if (isCapacitor()) {
-    // En IPA: el hostname es localhost → no sirve para conectar al servidor.
-    // Mostramos la pantalla de entrada de IP.
+    // En IPA nativa el hostname es localhost → mostrar UI de entrada IP
     injectIpScreen();
   } else {
-    // En Safari abierto desde http://192.168.1.X:3000 → hostname correcto.
+    // En Safari abierto desde http://192.168.X.X:3000
     state.wsUrl = buildWsUrl();
     updateServerAddress();
     const p = getInitialPlayer();
@@ -50,31 +74,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ─── Detección de entorno ─────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: ENTORNO
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function isCapacitor() {
   return (
     window.Capacitor !== undefined ||
     window.location.protocol === 'capacitor:' ||
-    window.location.protocol === 'http:' && window.location.hostname === 'localhost'
+    (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
   );
 }
-
-// ─── URL del WebSocket ────────────────────────────────────────────────────────
 
 function buildWsUrl(hostOverride) {
   const params = new URLSearchParams(window.location.search);
   const host   = hostOverride || params.get('wsHost');
   const port   = params.get('wsPort') || '8000';
-
   if (host) return `ws://${host}:${port}`;
-
-  // Flujo Safari: usa la IP del servidor HTTP directamente
   const h = window.location.hostname || '127.0.0.1';
   return `ws://${h}:${port}`;
 }
 
-// ─── Pantalla de IP (solo IPA) ────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: PANTALLA DE IP (solo IPA/Capacitor)
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function injectIpScreen() {
   const saved = lsGet('smashpad_ip') || '';
@@ -82,10 +105,10 @@ function injectIpScreen() {
   const scr = document.createElement('div');
   scr.id = 'ipScreen';
   scr.style.cssText = [
-    'position:fixed', 'inset:0', 'z-index:9999',
-    'display:flex', 'align-items:center', 'justify-content:center',
+    'position:fixed','inset:0','z-index:9999',
+    'display:flex','align-items:center','justify-content:center',
     'background:rgba(6,6,14,.97)',
-    "font-family:'Share Tech Mono',monospace"
+    "font-family:'Share Tech Mono',monospace",
   ].join(';');
 
   scr.innerHTML = `
@@ -127,70 +150,57 @@ function injectIpScreen() {
   const attempt = () => {
     const raw = inp.value.trim();
     if (!raw) { err.textContent = 'Escribe la IP del PC.'; return; }
-
-    // Limpiar posibles prefijos ws:// o http://
-    const ip = raw.replace(/^wss?:\/\//, '').replace(/^https?:\/\//, '').split(':')[0].split('/')[0];
+    const ip = raw
+      .replace(/^wss?:\/\//, '')
+      .replace(/^https?:\/\//, '')
+      .split(':')[0].split('/')[0];
     if (!ip) { err.textContent = 'IP no valida.'; return; }
 
     lsSet('smashpad_ip', ip);
     const wsUrl = `ws://${ip}:8000`;
-
     err.textContent = 'Probando conexion…';
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
+    btn.disabled = true; btn.style.opacity = '0.6';
 
-    // Probe: verificar que el servidor responde antes de continuar
     let probe;
-    try {
-      probe = new WebSocket(wsUrl);
-    } catch {
+    try { probe = new WebSocket(wsUrl); }
+    catch {
       err.textContent = 'URL no valida. Revisa la IP.';
-      btn.disabled = false;
-      btn.style.opacity = '1';
+      btn.disabled = false; btn.style.opacity = '1';
       return;
     }
 
     const timer = setTimeout(() => {
       try { probe.close(); } catch {}
-      err.textContent = 'Sin respuesta. ¿Esta corriendo server.py en el PC?';
-      btn.disabled = false;
-      btn.style.opacity = '1';
+      err.textContent = '¿Esta corriendo server.py en el PC?';
+      btn.disabled = false; btn.style.opacity = '1';
     }, 5000);
 
     probe.addEventListener('open', () => {
       clearTimeout(timer);
       try { probe.close(); } catch {}
-      // Conexion OK → guardar URL y arrancar la app
       state.wsUrl = wsUrl;
       scr.remove();
       updateServerAddress();
       const p = getInitialPlayer();
-      if (p) connectAs(p); else setSetupMessage('Toca tu jugador para conectarte.');
+      if (p) connectAs(p);
+      else setSetupMessage('Toca tu jugador para conectarte.');
     });
 
     probe.addEventListener('error', () => {
       clearTimeout(timer);
-      err.textContent = 'No se pudo conectar. Revisa la IP y que esten en la misma Wi-Fi.';
-      btn.disabled = false;
-      btn.style.opacity = '1';
+      err.textContent = 'No se pudo conectar. Revisa la IP y la Wi-Fi.';
+      btn.disabled = false; btn.style.opacity = '1';
     });
   };
 
   btn.addEventListener('click', attempt);
   inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') attempt(); });
-
-  // Si hay IP guardada, intentar automáticamente
-  if (saved) {
-    setTimeout(attempt, 300);
-  }
+  if (saved) setTimeout(attempt, 300);
 }
 
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-
-function lsGet(k)    { try { return localStorage.getItem(k); }    catch { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, v); }        catch {} }
-
-// ─── Setup ────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: SETUP SCREEN
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function getInitialPlayer() {
   const p = Number.parseInt(new URLSearchParams(location.search).get('player') || '', 10);
@@ -198,26 +208,27 @@ function getInitialPlayer() {
 }
 
 function bindSetup() {
+  // Player card tap → conectar
   document.querySelectorAll('.player-card').forEach((card) => {
     card.addEventListener('click', () => {
       const p = Number.parseInt(card.dataset.player || '', 10);
       if (p) connectAs(p);
     });
   });
+
+  // QR scanner trigger desde setup
+  document.getElementById('openQrScannerBtn')?.addEventListener('click', openQrScanner);
 }
 
-// ─── Controller bindings ──────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: CONTROLLER BINDINGS
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function bindController() {
-  document.getElementById('gyroBtn').addEventListener('click', toggleGyroMode);
-  document.getElementById('gyroCenterBtn').addEventListener('click', calibrateGyro);
-  document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    disconnect('manual');
-    disableGyro();
-    showSetup();
-    setStatus('Jugador liberado. Puedes elegir otro.');
-  });
+  document.getElementById('gyroBtn')?.addEventListener('click', toggleGyroMode);
+  document.getElementById('gyroCenterBtn')?.addEventListener('click', calibrateGyro);
+  document.getElementById('fullscreenBtn')?.addEventListener('click', toggleFullscreen);
+  document.getElementById('settingsGearBtn')?.addEventListener('click', openSettings);
 
   bindButtonPad();
   bindJoystick();
@@ -230,7 +241,9 @@ function bindController() {
   updateGyroUi();
 }
 
-// ─── WebSocket ────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: WEBSOCKET
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function connectAs(player) {
   state.selectedPlayer = player;
@@ -241,30 +254,26 @@ function connectAs(player) {
   if (state.socket) disconnect('switch');
 
   let socket;
-  try {
-    socket = new WebSocket(state.wsUrl);
-  } catch {
+  try { socket = new WebSocket(state.wsUrl); }
+  catch {
     showSetup();
     setSetupMessage('No se pudo abrir el WebSocket. Revisa la IP.');
     return;
   }
-
   state.socket = socket;
 
-  // Timeout de conexion: si en 6s no abre, avisamos
   const connectTimer = setTimeout(() => {
     if (state.socket !== socket) return;
     if (socket.readyState === WebSocket.CONNECTING) {
       socket.close();
       state.socket = null;
       showSetup();
-      setSetupMessage('Sin respuesta del servidor. Comprueba que server.py esta corriendo.');
+      setSetupMessage('Sin respuesta. Comprueba que server.py esta corriendo.');
     }
   }, 6000);
 
   socket.addEventListener('open', () => {
     clearTimeout(connectTimer);
-    // Enviamos handshake: identificamos qué jugador somos
     safeSend({ player });
   });
 
@@ -275,6 +284,7 @@ function connectAs(player) {
     if (msg.status === 'connected') {
       state.connectedPlayer = msg.player;
       applyPlayerTheme(msg.player);
+      syncSettingsPlayerButtons(msg.player);
       showController();
       setStatus(`Jugador ${msg.player} conectado`);
     }
@@ -314,7 +324,9 @@ function safeSend(payload) {
   state.socket.send(JSON.stringify(payload));
 }
 
-// ─── Button pad ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: BUTTON PAD
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function bindButtonPad() {
   document.querySelectorAll('[data-btn]').forEach((btn) => {
@@ -330,7 +342,11 @@ function bindButtonPad() {
       btn.classList.add('pressed');
       state.activeButtons.add(name);
       safeSend({ button: name, action: 'press' });
+
+      // Vibración háptica en botones de ataque
+      if (['A', 'B', 'X', 'Y'].includes(name)) triggerHaptic();
     };
+
     const release = (e) => {
       if (e) e.preventDefault();
       if (btn.dataset.pressed !== '1') return;
@@ -341,15 +357,17 @@ function bindButtonPad() {
       safeSend({ button: name, action: 'release' });
     };
 
-    btn.addEventListener('pointerdown',       press);
-    btn.addEventListener('pointerup',         release);
-    btn.addEventListener('pointercancel',     release);
-    btn.addEventListener('pointerleave',      release);
+    btn.addEventListener('pointerdown',        press);
+    btn.addEventListener('pointerup',          release);
+    btn.addEventListener('pointercancel',      release);
+    btn.addEventListener('pointerleave',       release);
     btn.addEventListener('lostpointercapture', release);
   });
 }
 
-// ─── Joystick ─────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: JOYSTICK
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function bindJoystick() {
   const area   = document.getElementById('joystick');
@@ -364,16 +382,18 @@ function bindJoystick() {
 
   const move = (cx, cy) => {
     if (state.gyroEnabled) return;
-    const r    = area.getBoundingClientRect();
-    const dx   = cx - (r.left + r.width  / 2);
-    const dy   = cy - (r.top  + r.height / 2);
+    const r   = area.getBoundingClientRect();
+    const dx  = cx - (r.left + r.width  / 2);
+    const dy  = cy - (r.top  + r.height / 2);
     const maxR = r.width * 0.34;
     const dist = Math.hypot(dx, dy);
     const lim  = dist > maxR ? maxR / dist : 1;
     updateStickHandle(dx * lim, dy * lim);
 
-    const nx = dx * lim / maxR, ny = dy * lim / maxR;
-    const T  = 0.35, next = new Set();
+    const nx = dx * lim / maxR;
+    const ny = dy * lim / maxR;
+    const T  = 0.35;
+    const next = new Set();
     if (nx >  T) next.add('RIGHT');
     if (nx < -T) next.add('LEFT');
     if (ny >  T) next.add('DOWN');
@@ -387,24 +407,36 @@ function bindJoystick() {
     area.setPointerCapture(e.pointerId);
     move(e.clientX, e.clientY);
   });
+
   area.addEventListener('pointermove', (e) => {
     if (state.joystickPointerId !== e.pointerId) return;
     e.preventDefault();
     move(e.clientX, e.clientY);
   });
-  const up = (e) => { if (state.joystickPointerId !== e.pointerId) return; e.preventDefault(); reset(); };
+
+  const up = (e) => {
+    if (state.joystickPointerId !== e.pointerId) return;
+    e.preventDefault();
+    reset();
+  };
   area.addEventListener('pointerup',           up);
   area.addEventListener('pointercancel',       up);
   area.addEventListener('lostpointercapture', reset);
 }
 
 function syncDirections(next) {
-  state.activeDirections.forEach(d => { if (!next.has(d)) safeSend({ button: d, action: 'release' }); });
-  next.forEach(d => { if (!state.activeDirections.has(d)) safeSend({ button: d, action: 'press' }); });
+  state.activeDirections.forEach(d => {
+    if (!next.has(d)) safeSend({ button: d, action: 'release' });
+  });
+  next.forEach(d => {
+    if (!state.activeDirections.has(d)) safeSend({ button: d, action: 'press' });
+  });
   state.activeDirections = next;
 }
 
-// ─── Gyro ─────────────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: GIROSCOPIO
+   ═══════════════════════════════════════════════════════════════════════ */
 
 async function toggleGyroMode() {
   if (state.gyroEnabled) {
@@ -413,22 +445,28 @@ async function toggleGyroMode() {
     return;
   }
   const ok = await requestGyroPermission();
-  if (!ok) { setGyroCopy('iPhone necesita permiso. Pulsa Gyro OFF otra vez y acepta.'); return; }
+  if (!ok) {
+    setGyroCopy('Permiso denegado. Pulsa Gyro otra vez y acepta.');
+    return;
+  }
   state.gyroEnabled = true;
+  state.gyroSmoothed = { x: 0, y: 0 };
   calibrateGyro();
   releaseAllInputs();
-  setStatus('Gyro activo');
-  setGyroCopy('Inclina el movil para mover. Usa "Centrar gyro" si se desvia.');
+  setStatus('Giroscopio activo');
+  setGyroCopy('Inclina el movil para mover. Pulsa "Centrar" si se desvia.');
   updateGyroUi();
 }
 
 function disableGyro() {
   state.gyroEnabled = false;
-  state.gyroNeutral = state.gyroLast = null;
+  state.gyroNeutral = null;
+  state.gyroLast    = null;
+  state.gyroSmoothed = { x: 0, y: 0 };
   syncDirections(new Set());
   updateStickHandle(0, 0);
   updateGyroUi();
-  setGyroCopy('Puedes usar el stick o activar el gyro.');
+  setGyroCopy('Usa el stick o activa el giroscopio.');
 }
 
 async function requestGyroPermission() {
@@ -446,8 +484,12 @@ async function requestGyroPermission() {
 }
 
 function calibrateGyro() {
-  if (!state.gyroLast) { setGyroCopy('Mueve un poco el movil y vuelve a pulsar "Centrar gyro".'); return; }
+  if (!state.gyroLast) {
+    setGyroCopy('Mueve el movil un momento y pulsa de nuevo "Centrar".');
+    return;
+  }
   state.gyroNeutral = { ...state.gyroLast };
+  state.gyroSmoothed = { x: 0, y: 0 };
   if (state.gyroEnabled) setGyroCopy('Centro guardado. Inclina para mover.');
 }
 
@@ -456,26 +498,338 @@ function handleDeviceOrientation(ev) {
   state.gyroLast = { beta: ev.beta, gamma: ev.gamma };
   if (!state.gyroEnabled) return;
   if (!state.gyroNeutral) state.gyroNeutral = { ...state.gyroLast };
-  const rawX = clamp((ev.gamma - state.gyroNeutral.gamma) / 18, -1, 1);
-  const rawY = clamp((ev.beta  - state.gyroNeutral.beta)  / 18, -1, 1);
-  const T = 0.24, next = new Set();
-  if (rawX >  T) next.add('RIGHT');
-  if (rawX < -T) next.add('LEFT');
-  if (rawY >  T) next.add('DOWN');
-  if (rawY < -T) next.add('UP');
+
+  const sens  = GYRO_SENSE_MAP[state.gyroSensLevel] || GYRO_SENSE_MAP[3];
+  const rawX  = clamp((ev.gamma - state.gyroNeutral.gamma) / sens.scale, -1, 1);
+  const rawY  = clamp((ev.beta  - state.gyroNeutral.beta)  / sens.scale, -1, 1);
+
+  // Suavizado EMA (exponential moving average)
+  const alpha = 1 - GYRO_SMOOTHING;
+  state.gyroSmoothed.x = alpha * rawX + GYRO_SMOOTHING * state.gyroSmoothed.x;
+  state.gyroSmoothed.y = alpha * rawY + GYRO_SMOOTHING * state.gyroSmoothed.y;
+
+  // Deadzone: ignorar micro-movimientos
+  const sx = Math.abs(state.gyroSmoothed.x) > sens.deadzone ? state.gyroSmoothed.x : 0;
+  const sy = Math.abs(state.gyroSmoothed.y) > sens.deadzone ? state.gyroSmoothed.y : 0;
+
+  const T    = 0.22;
+  const next = new Set();
+  if (sx >  T) next.add('RIGHT');
+  if (sx < -T) next.add('LEFT');
+  if (sy >  T) next.add('DOWN');
+  if (sy < -T) next.add('UP');
   syncDirections(next);
+
   const area = document.getElementById('joystick');
   const maxR = area ? area.getBoundingClientRect().width * 0.34 : 0;
-  updateStickHandle(rawX * maxR, rawY * maxR);
+  updateStickHandle(sx * maxR, sy * maxR);
 }
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: HÁPTICA
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function triggerHaptic() {
+  if (!state.vibrationEnabled) return;
+
+  // Capacitor Haptics (nativo)
+  if (window.Capacitor?.Plugins?.Haptics) {
+    try {
+      window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' });
+      return;
+    } catch {}
+  }
+
+  // Web Vibration API (fallback)
+  if (navigator.vibrate) {
+    try { navigator.vibrate(22); } catch {}
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: QR SCANNER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function openQrScanner() {
+  const modal = document.getElementById('qrScannerModal');
+  if (!modal) return;
+
+  // Resetear estado visual
+  setQrResult('', '');
+  document.getElementById('qrScannerHint').textContent = 'Apunta al QR que muestra la terminal';
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+
+  startQrCamera();
+}
+
+function closeQrScanner() {
+  stopQrCamera();
+  const modal = document.getElementById('qrScannerModal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function startQrCamera() {
+  const video  = document.getElementById('qrVideo');
+  const canvas = document.getElementById('qrCanvas');
+  if (!video || !canvas) return;
+
+  // Detener stream previo
+  stopQrCamera();
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } },
+    audio: false,
+  })
+  .then((stream) => {
+    state.qrStream = stream;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+    video.addEventListener('loadedmetadata', () => {
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 640;
+      scheduleQrScan();
+    }, { once: true });
+  })
+  .catch((err) => {
+    setQrResult(`No se pudo acceder a la camara: ${err.name}`, 'error');
+  });
+}
+
+function stopQrCamera() {
+  if (state.qrAnimFrame) { cancelAnimationFrame(state.qrAnimFrame); state.qrAnimFrame = null; }
+  if (state.qrStream) {
+    state.qrStream.getTracks().forEach(t => t.stop());
+    state.qrStream = null;
+  }
+  const video = document.getElementById('qrVideo');
+  if (video) { video.srcObject = null; }
+}
+
+function scheduleQrScan() {
+  state.qrAnimFrame = requestAnimationFrame(scanQrFrame);
+}
+
+function scanQrFrame() {
+  const video  = document.getElementById('qrVideo');
+  const canvas = document.getElementById('qrCanvas');
+  if (!video || !canvas || !state.qrStream) return;
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+    scheduleQrScan();
+    return;
+  }
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  let imageData;
+  try {
+    imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } catch {
+    scheduleQrScan();
+    return;
+  }
+
+  // jsQR detection (incluido vía CDN)
+  const code = (typeof jsQR !== 'undefined')
+    ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
+    : null;
+
+  if (code?.data) {
+    handleQrDetected(code.data);
+  } else {
+    scheduleQrScan();
+  }
+}
+
+function handleQrDetected(rawData) {
+  // El QR del servidor contiene: http://192.168.X.X:3000
+  // Extraemos la IP de esa URL
+  let ip = null;
+  try {
+    // Intentar parsear como URL
+    const url = new URL(rawData.trim());
+    ip = url.hostname;
+  } catch {
+    // Si no es una URL válida, intentar extraer IP directamente
+    const match = rawData.trim().match(/(\d{1,3}(?:\.\d{1,3}){3})/);
+    if (match) ip = match[1];
+  }
+
+  if (!ip) {
+    setQrResult('QR detectado, pero no contiene una IP válida.', 'error');
+    scheduleQrScan();
+    return;
+  }
+
+  // IP encontrada
+  triggerHaptic();
+  setQrResult(`✓ Servidor: ${ip}`, 'success');
+  document.getElementById('qrScannerHint').textContent = 'Conectando…';
+
+  // Guardar en localStorage
+  lsSet('smashpad_ip', ip);
+  const wsUrl = `ws://${ip}:8000`;
+
+  // Esperar un momento para mostrar el resultado y luego cerrar
+  setTimeout(() => {
+    state.wsUrl = wsUrl;
+    updateServerAddress();
+    closeQrScanner();
+    closeSettings();
+
+    const p = getInitialPlayer() || state.selectedPlayer || 1;
+    connectAs(p);
+  }, 900);
+}
+
+function setQrResult(text, type) {
+  const el = document.getElementById('qrScannerResult');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'qr-scanner-result' + (type ? ` ${type}` : '');
+}
+
+// Cerrar QR scanner al pulsar la X
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('qrScannerClose')?.addEventListener('click', closeQrScanner);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: SETTINGS PANEL
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function initSettingsPanel() {
+  // Gear button & close
+  document.getElementById('settingsCloseBtn')?.addEventListener('click', closeSettings);
+  document.getElementById('settingsBackdrop')?.addEventListener('click', closeSettings);
+
+  // Player selector dentro del panel
+  document.querySelectorAll('[data-settings-player]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const p = Number.parseInt(btn.dataset.settingsPlayer || '', 10);
+      if (!p) return;
+      // Cambiar el jugador en caliente si estamos conectados
+      if (state.connectedPlayer) {
+        disconnect('switch');
+        connectAs(p);
+      } else {
+        state.selectedPlayer = p;
+        applyPlayerTheme(p);
+        syncSettingsPlayerButtons(p);
+      }
+      closeSettings();
+    });
+  });
+
+  // Vibration toggle
+  const vibToggle = document.getElementById('vibrationToggle');
+  if (vibToggle) {
+    vibToggle.setAttribute('aria-checked', state.vibrationEnabled ? 'true' : 'false');
+    vibToggle.addEventListener('click', () => {
+      state.vibrationEnabled = !state.vibrationEnabled;
+      lsSet('smashpad_vibration', String(state.vibrationEnabled));
+      vibToggle.setAttribute('aria-checked', state.vibrationEnabled ? 'true' : 'false');
+      if (state.vibrationEnabled) triggerHaptic(); // confirmar que funciona
+    });
+  }
+
+  // Gyro sensitivity slider
+  const slider = document.getElementById('gyroSensSlider');
+  if (slider) {
+    slider.value = String(state.gyroSensLevel);
+    updateGyroSensLabel();
+    slider.addEventListener('input', () => {
+      state.gyroSensLevel = Number(slider.value);
+      lsSet('smashpad_gyro_sens', String(state.gyroSensLevel));
+      updateGyroSensLabel();
+    });
+  }
+
+  // Re-scan QR
+  document.getElementById('rescanQrBtn')?.addEventListener('click', () => {
+    closeSettings();
+    setTimeout(openQrScanner, 300);
+  });
+
+  // Reconnect
+  document.getElementById('reconnectBtn')?.addEventListener('click', () => {
+    closeSettings();
+    if (state.wsUrl) {
+      const p = state.connectedPlayer || state.selectedPlayer || 1;
+      disconnect('manual');
+      setTimeout(() => connectAs(p), 300);
+    } else {
+      closeSettings();
+      showSetup();
+    }
+  });
+
+  // Change player → volver a setup
+  document.getElementById('changePlayerBtn')?.addEventListener('click', () => {
+    closeSettings();
+    disconnect('manual');
+    disableGyro();
+    showSetup();
+    setStatus('Elige jugador.');
+  });
+
+  // Sync initial player buttons state
+  syncSettingsPlayerButtons(state.selectedPlayer);
+}
+
+function openSettings() {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  syncSettingsPlayerButtons(state.connectedPlayer || state.selectedPlayer);
+}
+
+function closeSettings() {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function syncSettingsPlayerButtons(player) {
+  document.querySelectorAll('[data-settings-player]').forEach((btn) => {
+    const p = Number.parseInt(btn.dataset.settingsPlayer || '', 10);
+    btn.classList.toggle('active', p === player);
+  });
+}
+
+function updateGyroSensLabel() {
+  const labels = {
+    1: 'Zona muerta: muy amplia (suave)',
+    2: 'Zona muerta: amplia',
+    3: 'Zona muerta: media',
+    4: 'Zona muerta: pequeña',
+    5: 'Zona muerta: mínima (preciso)',
+  };
+  const el = document.getElementById('gyroSensLabel');
+  if (el) el.textContent = labels[state.gyroSensLevel] || labels[3];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: UI HELPERS
+   ═══════════════════════════════════════════════════════════════════════ */
 
 function releaseAllInputs() {
   state.activeButtons.forEach(b => safeSend({ button: b, action: 'release' }));
   state.activeButtons.clear();
   syncDirections(new Set());
-  document.querySelectorAll('[data-btn]').forEach(b => { b.classList.remove('pressed'); b.dataset.pressed = '0'; });
+  document.querySelectorAll('[data-btn]').forEach(b => {
+    b.classList.remove('pressed');
+    b.dataset.pressed = '0';
+  });
   updateStickHandle(0, 0);
 }
 
@@ -496,12 +850,16 @@ function updateGyroUi() {
   c.classList.toggle('mini-btn-disabled', !state.gyroEnabled);
 }
 
-function setGyroCopy(t) { const el = document.getElementById('gyroCopy'); if (el) el.textContent = t; }
+function setGyroCopy(t) {
+  const el = document.getElementById('gyroCopy');
+  if (el) el.textContent = t;
+}
 
 function applyPlayerTheme(player) {
   const color = PLAYER_COLORS[player] || PLAYER_COLORS[1];
   document.documentElement.style.setProperty('--player-color', color);
   document.documentElement.style.setProperty('--player-glow', `${color}66`);
+
   document.querySelectorAll('.player-card').forEach(c => {
     const sel = Number.parseInt(c.dataset.player || '', 10) === player;
     c.classList.toggle('selected', sel);
@@ -524,8 +882,15 @@ function showSetup() {
   document.getElementById('setup').style.display      = 'flex';
 }
 
-function setStatus(t) { const el = document.getElementById('statusText'); if (el) el.textContent = t; }
-function setSetupMessage(t) { const el = document.getElementById('setupCopy'); if (el) el.textContent = t; }
+function setStatus(t) {
+  const el = document.getElementById('statusText');
+  if (el) el.textContent = t;
+}
+
+function setSetupMessage(t) {
+  const el = document.getElementById('setupCopy');
+  if (el) el.textContent = t;
+}
 
 async function toggleFullscreen() {
   const root = document.documentElement;
@@ -535,3 +900,10 @@ async function toggleFullscreen() {
     try { await document.exitFullscreen(); } catch {}
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MÓDULO: LOCALSTORAGE HELPERS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function lsGet(k)    { try { return localStorage.getItem(k); }    catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); }        catch {} }

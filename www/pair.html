@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SmashPad - QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet"
+  >
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #06060e;
+      --cyan: #06b6d4;
+      --violet: #7c3aed;
+      --safe-top: max(env(safe-area-inset-top), 18px);
+      --safe-right: max(env(safe-area-inset-right), 18px);
+      --safe-bottom: max(env(safe-area-inset-bottom), 18px);
+      --safe-left: max(env(safe-area-inset-left), 18px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding:
+        calc(var(--safe-top) + 16px)
+        calc(var(--safe-right) + 16px)
+        calc(var(--safe-bottom) + 16px)
+        calc(var(--safe-left) + 16px);
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at top, rgba(124, 58, 237, 0.18), transparent 42%),
+        radial-gradient(circle at bottom right, rgba(6, 182, 212, 0.14), transparent 34%),
+        linear-gradient(180deg, #080912 0%, #05060c 100%);
+      color: #eef2ff;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .panel {
+      width: min(100%, 760px);
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      gap: 24px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 28px;
+      background: rgba(9, 11, 20, 0.82);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+    }
+
+    .qr-side {
+      display: grid;
+      gap: 14px;
+      justify-items: center;
+      align-content: start;
+    }
+
+    .qr-shell {
+      padding: 18px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 0 40px rgba(6, 182, 212, 0.16);
+    }
+
+    #qrcode canvas,
+    #qrcode img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(34px, 6vw, 54px);
+      line-height: 0.95;
+    }
+
+    .title span {
+      color: var(--cyan);
+      text-shadow: 0 0 28px rgba(6, 182, 212, 0.6);
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      opacity: 0.72;
+    }
+
+    .content {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .lead {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #d6e2f2;
+    }
+
+    .code {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      background: rgba(6, 182, 212, 0.08);
+      color: #d7fbff;
+      word-break: break-all;
+      font-size: 13px;
+    }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #c1cede;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .btn {
+      min-height: 42px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #10c8ea, #0787a2);
+      color: #04131a;
+      border: none;
+      font-weight: 700;
+    }
+
+    .hint {
+      color: #91a3b9;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 760px) {
+      .panel {
+        grid-template-columns: 1fr;
+      }
+
+      .qr-side {
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="qr-side">
+      <div class="qr-shell">
+        <div id="qrcode"></div>
+      </div>
+      <div class="hint">El QR ya apunta al mando listo para el movil.</div>
+    </div>
+
+    <div class="content">
+      <div class="eyebrow">[ MULTIPLAYER LINK ]</div>
+      <div class="title">SMASH<span>PAD</span></div>
+      <p class="lead">
+        Escanea este QR con el iPhone o cualquier movil. La pagina abre el controlador y solo
+        hay que tocar el jugador correspondiente.
+      </p>
+      <div class="code" id="shareUrl"></div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>Ejecuta <code>python server.py</code> en el PC.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>Todos los moviles deben estar en la misma Wi-Fi que el PC.</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>Al escanear, cada jugador toca P1, P2, P3 o P4 y entra directamente.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn btn-primary" id="openController" href="./index.html" target="_blank" rel="noopener noreferrer">
+          Abrir mando
+        </a>
+        <button class="btn" id="copyBtn" type="button">Copiar enlace</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const controllerUrl = new URL('./index.html', window.location.href).toString();
+    const qrSize = Math.min(280, Math.max(220, Math.floor(window.innerWidth * 0.34)));
+
+    document.getElementById('shareUrl').textContent = controllerUrl;
+    document.getElementById('openController').href = controllerUrl;
+
+    new QRCode(document.getElementById('qrcode'), {
+      text: controllerUrl,
+      width: qrSize,
+      height: qrSize,
+      colorDark: '#06060e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(controllerUrl);
+        document.getElementById('copyBtn').textContent = 'Enlace copiado';
+      } catch {
+        document.getElementById('copyBtn').textContent = 'No se pudo copiar';
+      }
+    });
+  </script>
+</body>
+</html>

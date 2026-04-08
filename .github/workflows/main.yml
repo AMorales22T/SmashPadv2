@@ -1,0 +1,107 @@
+name: Build SmashPad IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Init Capacitor iOS project
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      # ── Patch Info.plist ────────────────────────────────────────────────────
+      # Capacitor genera Info.plist sin excepciones ATS.
+      # iOS bloquea ws:// (no-TLS) desde WKWebView silenciosamente.
+      # Este paso inyecta las claves necesarias antes del build.
+      - name: Patch Info.plist
+        run: |
+          PLIST="ios/App/App/Info.plist"
+
+          echo "Info.plist antes del patch:"
+          cat "$PLIST"
+
+          # NSAppTransportSecurity: permite ws:// y http:// en red local
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSAppTransportSecurity dict" "$PLIST" 2>/dev/null || true
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :NSAppTransportSecurity:NSAllowsArbitraryLoads true" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :NSAppTransportSecurity:NSAllowsLocalNetworking true" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSAppTransportSecurity:NSAllowsArbitraryLoadsInWebContent bool true" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :NSAppTransportSecurity:NSAllowsArbitraryLoadsInWebContent true" "$PLIST"
+
+          # Permiso de red local (iOS 14+)
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSLocalNetworkUsageDescription string 'SmashPad necesita acceso a la red local para conectarse al servidor.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c \
+            "Set :NSLocalNetworkUsageDescription 'SmashPad necesita acceso a la red local para conectarse al servidor.'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSBonjourServices array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSBonjourServices: string '_http._tcp'" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c \
+            "Add :NSBonjourServices: string '_ws._tcp'" "$PLIST" 2>/dev/null || true
+
+          echo ""
+          echo "Info.plist despues del patch:"
+          cat "$PLIST"
+
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Build with Xcode (unsigned)
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/SmashPad.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE=""
+
+      - name: Package IPA
+        run: |
+          mkdir -p /tmp/Payload
+          cp -r "$RUNNER_TEMP/SmashPad.xcarchive/Products/Applications/App.app" /tmp/Payload/
+          cd /tmp
+          zip -r SmashPad.ipa Payload/
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmashPad-IPA
+          path: /tmp/SmashPad.ipa
+          retention-days: 30

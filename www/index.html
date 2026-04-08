@@ -2,10 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,80 +10,49 @@
   <title>SmashPad</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap"
-    rel="stylesheet"
-  >
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./main.css">
 </head>
 <body>
 
-  <!-- ═══════════════════════════════ SETUP SCREEN ═══════════════════════════ -->
   <div id="setup">
     <canvas id="bgCanvas"></canvas>
     <div class="scan-lines"></div>
-
     <div class="setup-content">
       <div class="logo-wrap">
         <div class="logo-eyebrow">[ QR READY ]</div>
         <div class="logo">SMASH<span>PAD</span></div>
         <div class="logo-sub">ESCANEA, ELIGE JUGADOR Y EMPIEZA</div>
       </div>
-
-      <div class="connection-pill" id="connectionHint">
-        Servidor detectado: <span id="serverAddress">--</span>
-      </div>
-
+      <div class="connection-pill" id="connectionHint">Servidor detectado: <span id="serverAddress">--</span></div>
       <div class="section-label">// TOCA TU JUGADOR</div>
       <div class="player-cards" role="radiogroup" aria-label="Seleccion de jugador">
         <button class="player-card selected" data-player="1" type="button" aria-checked="true">
-          <div class="card-glow"></div>
-          <div class="card-num">P1</div>
-          <div class="card-text">Rojo</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P1</div><div class="card-text">Rojo</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="2" type="button" aria-checked="false">
-          <div class="card-glow"></div>
-          <div class="card-num">P2</div>
-          <div class="card-text">Azul</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P2</div><div class="card-text">Azul</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="3" type="button" aria-checked="false">
-          <div class="card-glow"></div>
-          <div class="card-num">P3</div>
-          <div class="card-text">Amarillo</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P3</div><div class="card-text">Amarillo</div><div class="card-bar"></div>
         </button>
         <button class="player-card" data-player="4" type="button" aria-checked="false">
-          <div class="card-glow"></div>
-          <div class="card-num">P4</div>
-          <div class="card-text">Verde</div>
-          <div class="card-bar"></div>
+          <div class="card-glow"></div><div class="card-num">P4</div><div class="card-text">Verde</div><div class="card-bar"></div>
         </button>
       </div>
-
-      <p class="setup-copy" id="setupCopy">
-        Al tocar una tarjeta te conectas automaticamente. No hace falta escribir IP.
-      </p>
-
+      <p class="setup-copy" id="setupCopy">Al tocar una tarjeta te conectas automaticamente.</p>
       <div class="setup-actions">
         <button class="qr-scan-btn" id="openQrScannerBtn" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/>
-            <path d="M17 14h3"/><path d="M14 17v3"/><path d="M20 17v3"/><path d="M17 20h3"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M17 14h3"/><path d="M14 17v3"/><path d="M20 17v3"/><path d="M17 20h3"/></svg>
           Escanear QR del servidor
         </button>
-        <a class="qr-hint" href="./pair.html" target="_blank" rel="noopener noreferrer">
-          Abrir pantalla QR
-        </a>
+        <a class="qr-hint" href="./pair.html" target="_blank" rel="noopener noreferrer">Abrir pantalla QR</a>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════ CONTROLLER ════════════════════════════ -->
   <div id="controller">
+
     <div id="statusBar">
       <span id="statusText">Desconectado</span>
       <div class="status-actions">
@@ -98,7 +64,6 @@
       </div>
     </div>
 
-    <!-- Floating settings gear -->
     <button class="settings-gear-btn" id="settingsGearBtn" type="button" aria-label="Configuracion">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -106,50 +71,77 @@
       </svg>
     </button>
 
-    <div class="shoulder-row">
+    <!-- DRAGGABLE: Shoulder row -->
+    <div class="drag-unit" id="shoulder-row">
       <button class="trigger" data-btn="L" data-side="left" type="button">L</button>
       <button class="z-btn" data-btn="Z" type="button">Z</button>
       <button class="trigger" data-btn="R" data-side="right" type="button">R</button>
     </div>
 
-    <div class="controls-grid">
-      <div class="left-zone">
-        <div class="zone-label">MOVIMIENTO</div>
-        <div class="stick-area" id="joystick">
-          <div class="stick-knob" id="stickHandle">
-            <div class="stick-knob__cap"></div>
-          </div>
-        </div>
-        <div class="gyro-copy" id="gyroCopy">Usa el stick o activa el giroscopio.</div>
+    <!-- DRAGGABLE: Stick cluster -->
+    <div class="drag-unit" id="stick-cluster">
+      <div class="zone-label">MOVIMIENTO</div>
+      <div class="stick-area" id="joystick">
+        <div class="stick-knob" id="stickHandle"><div class="stick-knob__cap"></div></div>
       </div>
+      <div class="gyro-copy" id="gyroCopy">Usa el stick o activa el giroscopio.</div>
+    </div>
 
+    <!-- DRAGGABLE: START -->
+    <div class="drag-unit" id="start-unit">
       <button class="start-btn" data-btn="START" type="button">START</button>
+    </div>
 
-      <div class="right-zone">
-        <div class="zone-label zone-label-right">ATAQUES</div>
-        <div class="face-buttons">
-          <button class="face-btn haptic-btn" id="a-btn" data-btn="A" type="button">A</button>
-          <button class="face-btn haptic-btn" id="b-btn" data-btn="B" type="button">B</button>
-          <button class="face-btn haptic-btn" id="x-btn" data-btn="X" type="button">X</button>
-          <button class="face-btn haptic-btn" id="y-btn" data-btn="Y" type="button">Y</button>
-        </div>
+    <!-- DRAGGABLE: Face buttons cluster -->
+    <div class="drag-unit" id="face-cluster">
+      <div class="zone-label zone-label-right">ATAQUES</div>
+      <div class="face-buttons">
+        <button class="face-btn haptic-btn" id="a-btn" data-btn="A" type="button">A</button>
+        <button class="face-btn haptic-btn" id="b-btn" data-btn="B" type="button">B</button>
+        <button class="face-btn haptic-btn" id="x-btn" data-btn="X" type="button">X</button>
+        <button class="face-btn haptic-btn" id="y-btn" data-btn="Y" type="button">Y</button>
       </div>
     </div>
+
+    <!-- Edit mode banner (top) -->
+    <div id="editBanner" class="edit-banner" hidden>
+      <span class="edit-banner-text">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Arrastra los controles
+      </span>
+      <div class="edit-banner-actions">
+        <button class="edit-action-btn" id="editResetBtn" type="button">Reset</button>
+        <button class="edit-action-btn edit-action-btn--done" id="editDoneBtn" type="button">✓ Listo</button>
+      </div>
+    </div>
+
+    <!-- Edit size toolbar (bottom, shown when a unit is selected) -->
+    <div id="editSizeBar" class="edit-size-bar" hidden>
+      <span class="edit-size-label" id="editSizeLabel">Selecciona un control</span>
+      <div class="edit-size-controls">
+        <button class="edit-size-btn" id="sizeDownBtn" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <span class="edit-size-value" id="editSizeValue">100%</span>
+        <button class="edit-size-btn" id="sizeUpBtn" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+
   </div>
 
-  <!-- ═══════════════════════════ SETTINGS PANEL ════════════════════════════ -->
+  <!-- SETTINGS PANEL -->
   <div class="settings-overlay" id="settingsOverlay" aria-hidden="true">
     <div class="settings-backdrop" id="settingsBackdrop"></div>
     <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="Configuracion">
       <div class="settings-header">
         <div class="settings-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           AJUSTES
         </div>
-        <button class="settings-close-btn" id="settingsCloseBtn" type="button" aria-label="Cerrar ajustes">✕</button>
+        <button class="settings-close-btn" id="settingsCloseBtn" type="button">✕</button>
       </div>
-
-      <!-- Player selector -->
       <div class="settings-section">
         <div class="settings-section-label">JUGADOR ACTIVO</div>
         <div class="settings-player-row">
@@ -159,8 +151,6 @@
           <button class="settings-player-btn" data-settings-player="4" type="button">P4</button>
         </div>
       </div>
-
-      <!-- Vibration toggle -->
       <div class="settings-section">
         <div class="settings-row">
           <div class="settings-row-info">
@@ -172,8 +162,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Gyro sensitivity -->
       <div class="settings-section">
         <div class="settings-row settings-row--column">
           <div class="settings-row-info">
@@ -187,8 +175,13 @@
           </div>
         </div>
       </div>
-
-      <!-- Actions -->
+      <div class="settings-section">
+        <div class="settings-section-label">DISEÑO DEL MANDO</div>
+        <button class="settings-action-btn settings-action-btn--highlight" id="editLayoutBtn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Personalizar posición y tamaño
+        </button>
+      </div>
       <div class="settings-section">
         <div class="settings-section-label">ACCIONES</div>
         <div class="settings-actions-grid">
@@ -209,67 +202,37 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════ QR SCANNER MODAL ══════════════════════════ -->
+  <!-- QR SCANNER -->
   <div class="qr-scanner-modal" id="qrScannerModal" aria-hidden="true">
     <div class="qr-scanner-inner">
       <div class="qr-scanner-header">
         <div class="qr-scanner-title">ESCANEAR QR DEL SERVIDOR</div>
-        <button class="qr-scanner-close" id="qrScannerClose" type="button" aria-label="Cerrar escaner">✕</button>
+        <button class="qr-scanner-close" id="qrScannerClose" type="button">✕</button>
       </div>
       <div class="qr-video-wrap">
         <video id="qrVideo" autoplay playsinline muted></video>
         <canvas id="qrCanvas" class="qr-canvas"></canvas>
         <div class="qr-frame">
-          <div class="qr-corner qr-corner--tl"></div>
-          <div class="qr-corner qr-corner--tr"></div>
-          <div class="qr-corner qr-corner--bl"></div>
-          <div class="qr-corner qr-corner--br"></div>
+          <div class="qr-corner qr-corner--tl"></div><div class="qr-corner qr-corner--tr"></div>
+          <div class="qr-corner qr-corner--bl"></div><div class="qr-corner qr-corner--br"></div>
           <div class="qr-scan-line"></div>
         </div>
       </div>
-      <div class="qr-scanner-hint" id="qrScannerHint">
-        Apunta al QR que muestra la terminal del servidor
-      </div>
+      <div class="qr-scanner-hint" id="qrScannerHint">Apunta al QR que muestra la terminal del servidor</div>
       <div class="qr-scanner-result" id="qrScannerResult"></div>
     </div>
   </div>
 
-  <!-- jsQR library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
   <script src="./app.js"></script>
-
-  <!-- Background canvas animation -->
   <script>
     (function() {
-      const canvas = document.getElementById('bgCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      let width = 0, height = 0;
-      const dots = Array.from({ length: 60 }, () => ({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        r: Math.random() * 1.5 + 0.4,
-        hue: [267, 192, 0, 145][Math.floor(Math.random() * 4)],
-        a: Math.random() * 0.35 + 0.08
-      }));
-      function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-      function draw() {
-        ctx.clearRect(0, 0, width, height);
-        ctx.strokeStyle = 'rgba(255,255,255,0.022)'; ctx.lineWidth = 1;
-        for (let x = 0; x < width; x += 56) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
-        for (let y = 0; y < height; y += 56) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
-        dots.forEach((dot) => {
-          dot.x += dot.vx; dot.y += dot.vy;
-          if (dot.x < 0 || dot.x > width) dot.vx *= -1;
-          if (dot.y < 0 || dot.y > height) dot.vy *= -1;
-          ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${dot.hue},80%,60%,${dot.a})`; ctx.fill();
-        });
-        requestAnimationFrame(draw);
-      }
-      resize(); window.addEventListener('resize', resize); draw();
+      const canvas = document.getElementById('bgCanvas'); if (!canvas) return;
+      const ctx = canvas.getContext('2d'); let width = 0, height = 0;
+      const dots = Array.from({length:60},()=>({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.5+.4,hue:[267,192,0,145][Math.floor(Math.random()*4)],a:Math.random()*.35+.08}));
+      function resize(){width=canvas.width=window.innerWidth;height=canvas.height=window.innerHeight;}
+      function draw(){ctx.clearRect(0,0,width,height);ctx.strokeStyle='rgba(255,255,255,0.022)';ctx.lineWidth=1;for(let x=0;x<width;x+=56){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,height);ctx.stroke();}for(let y=0;y<height;y+=56){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();}dots.forEach(d=>{d.x+=d.vx;d.y+=d.vy;if(d.x<0||d.x>width)d.vx*=-1;if(d.y<0||d.y>height)d.vy*=-1;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fillStyle=`hsla(${d.hue},80%,60%,${d.a})`;ctx.fill();});requestAnimationFrame(draw);}
+      resize(); window.addEventListener('resize',resize); draw();
     })();
   </script>
 </body>
